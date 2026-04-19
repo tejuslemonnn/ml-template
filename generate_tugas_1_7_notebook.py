@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import importlib
 import re
+import subprocess
 import sys
-
-import nbformat as nbf
-import pandas as pd
-from pandas.api.types import is_bool_dtype, is_numeric_dtype
-
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -32,6 +29,39 @@ TARGET_NAME_PRIORITY = [
     "final_exam_score",
     "umur_tahun",
 ]
+
+REQUIRED_PACKAGES = {
+    "nbformat": "nbformat",
+    "pandas": "pandas",
+    "numpy": "numpy",
+    "seaborn": "seaborn",
+    "matplotlib": "matplotlib",
+    "scipy": "scipy",
+    "sklearn": "scikit-learn",
+    "openpyxl": "openpyxl",
+}
+
+
+def ensure_required_packages() -> None:
+    missing = []
+    for module_name, package_name in REQUIRED_PACKAGES.items():
+        try:
+            importlib.import_module(module_name)
+        except ImportError:
+            missing.append(package_name)
+
+    if not missing:
+        return
+
+    print("Library belum lengkap. Menginstall dependency yang diperlukan...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", *missing])
+
+
+ensure_required_packages()
+
+import nbformat as nbf
+import pandas as pd
+from pandas.api.types import is_bool_dtype, is_numeric_dtype
 
 
 def slugify(text: str) -> str:
