@@ -175,11 +175,36 @@ def resolve_output_dir(output_dir_raw: str | None, dataset_path: Path, task: str
         if not output_dir.is_absolute():
             output_dir = (BASE_DIR / output_dir).resolve()
         return output_dir
+    return BASE_DIR
 
-    parent = dataset_path.parent
-    if parent.name in {"classification-gpt", "regression-gpt"}:
-        return parent
-    return parent / f"{task}-gpt"
+
+def notebook_to_python_script(nb: nbf.NotebookNode) -> str:
+    parts: list[str] = [
+        "# Auto-generated from notebook output.",
+        "# This script mirrors the generated .ipynb content.",
+    ]
+
+    for cell in nb.cells:
+        if cell.cell_type == "markdown":
+            markdown_lines = cell.source.strip().splitlines()
+            if markdown_lines:
+                parts.append("")
+                parts.extend(f"# {line}" if line else "#" for line in markdown_lines)
+        elif cell.cell_type == "code":
+            code = cell.source.rstrip()
+            parts.append("")
+            if code:
+                parts.append(code)
+            else:
+                parts.append("pass")
+
+    return "\n".join(parts).rstrip() + "\n"
+
+
+def write_python_script(nb: nbf.NotebookNode, output_path: Path) -> Path:
+    py_output_path = output_path.with_suffix(".py")
+    py_output_path.write_text(notebook_to_python_script(nb), encoding="utf-8")
+    return py_output_path
 
 
 def build_common_setup_cell(dataset_path: Path) -> str:
@@ -749,7 +774,7 @@ def generate_notebook_for_dataset(
     dataset_path: Path,
     output_dir_raw: str | None = None,
     target_override: str | None = None,
-) -> Path:
+) -> tuple[Path, Path]:
     df = load_dataset(dataset_path)
     task, target = infer_task_and_target(df, target_override=target_override)
     output_dir = resolve_output_dir(output_dir_raw, dataset_path, task)
@@ -764,7 +789,8 @@ def generate_notebook_for_dataset(
         nb = build_regression_notebook(dataset_path, target, output_path)
 
     nbf.write(nb, output_path)
-    return output_path
+    py_output_path = write_python_script(nb, output_path)
+    return output_path, py_output_path
 
 
 def main() -> int:
@@ -774,11 +800,10 @@ def main() -> int:
     if not raw_path:
         print("Path dataset kosong.")
         return 1
-    if not output_dir_raw:
-        print("Path folder output kosong.")
-        return 1
     if not target_override:
         target_override = None
+    if not output_dir_raw:
+        output_dir_raw = None
 
     dataset_path = Path(raw_path)
     if not dataset_path.is_absolute():
@@ -789,12 +814,13 @@ def main() -> int:
         return 1
 
     try:
-        output_path = generate_notebook_for_dataset(dataset_path, output_dir_raw, target_override)
+        output_path, py_output_path = generate_notebook_for_dataset(dataset_path, output_dir_raw, target_override)
     except Exception as exc:
         print(f"Gagal membuat notebook: {exc}")
         return 1
 
     print(f"Notebook berhasil dibuat: {output_path}")
+    print(f"Script Python berhasil dibuat: {py_output_path}")
     return 0
 
 
