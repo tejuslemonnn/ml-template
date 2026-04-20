@@ -283,6 +283,21 @@ numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
 """
 
 
+def build_post_preprocessing_boxplot_cell() -> str:
+    return """numeric_feature_boxplot_cols = [col for col in feature_cols if pd.api.types.is_numeric_dtype(df_clean[col])]
+
+if len(numeric_feature_boxplot_cols) > 0:
+    plt.figure(figsize=(12, max(4, len(numeric_feature_boxplot_cols) * 0.45)))
+    sns.boxplot(data=df_clean[numeric_feature_boxplot_cols], orient="h", color="#9ecae1")
+    plt.title("Boxplot Fitur Numerik Setelah Data Preprocessing")
+    plt.xlabel("Nilai")
+    plt.tight_layout()
+    plt.show()
+else:
+    print("Tidak ada fitur numerik untuk divisualisasikan dengan boxplot setelah preprocessing.")
+"""
+
+
 def build_classification_notebook(dataset_path: Path, target: str, output_path: Path) -> nbf.NotebookNode:
     title = dataset_path.stem.replace("_", " ").replace("-", " ").title()
 
@@ -357,6 +372,7 @@ display(outlier_summary_before)
 df_clean = cap_outliers_iqr(df, numeric_feature_candidates) if numeric_feature_candidates else df.copy()
 """
         ),
+        nbf.v4.new_code_cell(build_post_preprocessing_boxplot_cell()),
         nbf.v4.new_markdown_cell("## 3. Data Transformation"),
         nbf.v4.new_code_cell(
             """numeric_model_cols = [col for col in feature_cols if pd.api.types.is_numeric_dtype(df_clean[col])]
@@ -598,6 +614,7 @@ else:
 df_clean = df.copy()
 """
         ),
+        nbf.v4.new_code_cell(build_post_preprocessing_boxplot_cell()),
         nbf.v4.new_markdown_cell("## 3. Data Transformation"),
         nbf.v4.new_code_cell(
             """numeric_feature_cols = [col for col in feature_cols if pd.api.types.is_numeric_dtype(df_clean[col])]
